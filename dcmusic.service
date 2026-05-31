@@ -1,0 +1,19 @@
+[Unit]
+Description=Discord Music Bot MikuMusicBot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/Halley-Comet
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/home/ubuntu/Halley-Comet/dcbot/bin/python main.py
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
