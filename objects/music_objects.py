@@ -20,11 +20,10 @@ class MusicDatabase():
         
 class GuildPlayer():
     
-    def __init__(self, ctx):
-        self.__bot = ctx.bot
-        self.__guild = ctx.guild
-        #self.__channel = ctx.channel
-        #self.__owner = ctx.author
+    def __init__(self, interaction):
+        self.__bot = interaction.client
+        self.__guild = interaction.guild
+        self.__channel = interaction.channel
         
         self.queue = []
         #[filename, MusicDatabase]
@@ -84,23 +83,22 @@ class GuildPlayer():
         music = await asyncio.to_thread(func)
         return music
     
-    async def dlmusic_many(self, ctx, urls: list[str]) -> list[MusicDatabase]:
+    async def dlmusic_many(self, interaction, urls: list[str]) -> list[MusicDatabase]:
         """
             including add to queue
         """
-        async with ctx.typing():
-            message = await ctx.send(f"adding playlist")
+        message = await interaction.channel.send(f"adding playlist")
             
-            async def func(url):
-                music = await self.dlmusic_one(url)
-                await self.addToQueue(music)
+        async def func(url):
+            music = await self.dlmusic_one(url)
+            await self.addToQueue(music)
 
-            coros = [func(url) for url in urls]
-            await asyncio.gather(*coros)
-            print(f"finished adding {len(urls)} songs")
-            await message.edit(content=f"finished adding")
+        coros = [func(url) for url in urls]
+        await asyncio.gather(*coros)
+        print(f"finished adding {len(urls)} songs")
+        await message.edit(content=f"finished adding")
     
-    async def playerLoop(self, ctx):
+    async def playerLoop(self, interaction):
         await self.__bot.wait_until_ready()
         while True:
             if self.nowplaying_music is not None:
@@ -113,9 +111,10 @@ class GuildPlayer():
                 else:
                     delta = (datetime.datetime.now() - self.__timeout_start_time).total_seconds()
                     if delta > 300:
-                        if ctx.voice_client is not None:
-                            await ctx.voice_client.disconnect()
-                            await ctx.send("Timeout (idle over 5 mins)")
+                        voice_client = self.__bot.get_guild(self.__guild.id).voice_client
+                        if voice_client is not None:
+                            await voice_client.disconnect()
+                            await interaction.channel.send("Timeout (idle over 5 mins)")
                         del self
                         return
                 await asyncio.sleep(1)
@@ -135,38 +134,39 @@ class GuildPlayer():
                 source.cleanup()
                 self.__timeout_start_time = datetime.datetime.now()
                 if error is not None:
-                    coro = ctx.send(error)
+                    coro = interaction.channel.send(str(error))
                     asyncio.run_coroutine_threadsafe(coro, self.__bot.loop)
                 self.history.insert(0, (filename, music))
                 self.nowplaying_music = None
             
             self.nowplaying_start_time = datetime.datetime.now()
-            ctx.voice_client.play(source, after=after)
+            voice_client = self.__bot.get_guild(self.__guild.id).voice_client
+            if voice_client:
+                voice_client.play(source, after=after)
             
             msg = await self.nowplaying()
-            await ctx.send(msg)
+            await interaction.channel.send(msg)
     
-    async def play(self, ctx, messages):
-        async with ctx.typing():
-            message = "".join(messages)
-            if Check().is_watch_url(message):
-                url = message
-                music = await self.dlmusic_one(url)
-                await ctx.send(await self.addToQueue(music))
-            elif Check().is_playlist_url(message):
-                urls = Playlist(message)
-                print(urls)
-                ctx.send("Playlist function is not implemented yet")
-            else: #not url
-                url = await self.__search(message)
-                if url is None:
-                    await ctx.send("No result found")
-                    return
-                music = await self.dlmusic_one(url)
-                await ctx.send(await self.addToQueue(music))
+    async def play(self, interaction, messages):
+        message = "".join(messages)
+        if Check().is_watch_url(message):
+            url = message
+            music = await self.dlmusic_one(url)
+            await interaction.channel.send(await self.addToQueue(music))
+        elif Check().is_playlist_url(message):
+            urls = Playlist(message)
+            print(urls)
+            await interaction.channel.send("Playlist function is not implemented yet")
+        else: #not url
+            url = await self.__search(message)
+            if url is None:
+                await interaction.channel.send("No result found")
+                return
+            music = await self.dlmusic_one(url)
+            await interaction.channel.send(await self.addToQueue(music))
         
         if self.nowplaying_music is None:
-            await self.playerLoop(ctx)
+            await self.playerLoop(interaction)
     
     async def __search(self, message: str) -> str:
         videosSearch = VideosSearch(message, limit = 1)
@@ -192,13 +192,18 @@ class GuildPlayer():
         """
         return output
     
-    async def repeat(self, ctx):
+    async def repeat(self, interaction):
         _, music = self.nowplaying_music
         await self.addToQueue(music, 0)
-        ctx.voice_client.stop()
+        voice_client = self.__bot.get_guild(self.__guild.id).voice_client
+        if voice_client:
+            voice_client.stop()
 
-    async def previous(self, ctx):
+    async def previous(self, interaction):
+        if len(self.history) == 0:
+            return
         self.queue.insert(0, self.nowplaying_music)
         self.queue.insert(0, self.history.pop(0))
-        ctx.voice_client.stop()
-        self.history.pop(0)
+        voice_client = self.__bot.get_guild(self.__guild.id).voice_client
+        if voice_client:
+            voice_client.stop()

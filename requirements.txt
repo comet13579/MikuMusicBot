@@ -4,3 +4,4 @@ PyNaCl
 ffmpeg
 ffprobe
 youtube-search-python
+httpx<0.28

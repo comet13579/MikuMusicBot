@@ -38,7 +38,7 @@ class MyBot(commands.Bot):
         print(f"Loaded {len(slash)} slash commands")
 
 def main():
-    config = Config("comet")
+    config = Config()
     prefix = config.prefix
     token = config.token
     
