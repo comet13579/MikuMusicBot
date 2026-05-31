@@ -47,7 +47,7 @@ class GuildPlayer():
                 self.queue.insert(
                     pos,
                     (
-                    rf"music\{self.__guild.id}\{video_id}_{video_title}.mp3",
+                    os.path.join("music", str(self.__guild.id), f"{video_id}_{video_title}.mp3"),
                     music
                     )
                 )
@@ -58,7 +58,7 @@ class GuildPlayer():
 
     async def dlmusic_one(self, url: str) -> MusicDatabase:
         video_opt = {
-            "outtmpl": f"music/{self.__guild.id}/%(display_id)s_%(title)s.%(ext)s",
+            "outtmpl": os.path.join("music", str(self.__guild.id), "%(display_id)s_%(title)s.%(ext)s"),
             "format": 'bestaudio',
             "extract_audio": True,
             "quiet": True,
@@ -75,7 +75,7 @@ class GuildPlayer():
         def func():
             with yt_dlp.YoutubeDL(video_opt) as ydl:
                 info = ydl.extract_info(url, download = False)
-                if os.path.isfile(rf"music\{self.__guild.id}\{info["id"]}_{info["title"]}.mp3") is not True:
+                if os.path.isfile(os.path.join("music", str(self.__guild.id), f"{info['id']}_{info['title']}.mp3")) is not True:
                     print(f"downloading {info['title']}")
                     ydl.download(url)
                 music = MusicDatabase(url, info)
