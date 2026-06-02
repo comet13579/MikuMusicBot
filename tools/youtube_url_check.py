@@ -1,7 +1,6 @@
 from urllib.parse import urlparse
 
 class Check():
-    
     def __init__(self):
         pass
     
@@ -15,7 +14,9 @@ class Check():
     def is_watch_url(self, url:str) -> bool:
         if self.is_yt_url(url):
             return url.__contains__("watch")
+        return False
 
     def is_playlist_url(self, url:str) -> bool:
         if self.is_yt_url(url):
             return url.__contains__("playlist")
+        return False

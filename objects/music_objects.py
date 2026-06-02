@@ -44,13 +44,7 @@ class GuildPlayer():
         while True:
             if self._addingToQueue is False:
                 self._addingToQueue = True
-                self.queue.insert(
-                    pos,
-                    (
-                    os.path.join("music", str(self.__guild.id), f"{video_id}_{video_title}.mp3"),
-                    music
-                    )
-                )
+                self.queue.insert(pos,(os.path.join("music", str(self.__guild.id), f"{video_id}_{video_title}.mp3"),music))
                 self._addingToQueue = False
                 break
             await asyncio.sleep(0.25)
@@ -122,12 +116,16 @@ class GuildPlayer():
             
             #else
             filename, music = self.queue.pop(0)
+            print(filename, os.path.isfile(filename))
             if os.path.isfile(filename) is False:
                 await self.dlmusic_one(music.url)
             self.nowplaying_music = (filename, music)
             
             volume = self.volume / 100
-            source = discord.FFmpegPCMAudio(filename)
+            source = discord.FFmpegPCMAudio(
+                filename,
+                before_options=["-reconnect 1", "-reconnect_streamed 1", "-reconnect_delay_max 5"]
+            )
             source = discord.PCMVolumeTransformer(source, volume=volume)
             
             def after(error):
@@ -147,23 +145,23 @@ class GuildPlayer():
             msg = await self.nowplaying()
             await interaction.channel.send(msg)
     
-    async def play(self, interaction, messages):
+    async def play(self, interaction: discord.Interaction, messages, sent_message: discord.Message):
         message = "".join(messages)
         if Check().is_watch_url(message):
             url = message
             music = await self.dlmusic_one(url)
-            await interaction.channel.send(await self.addToQueue(music))
+            await sent_message.edit(content=await self.addToQueue(music))
         elif Check().is_playlist_url(message):
             urls = Playlist(message)
             print(urls)
-            await interaction.channel.send("Playlist function is not implemented yet")
+            await sent_message.edit(content="Playlist function is not implemented yet")
         else: #not url
             url = await self.__search(message)
             if url is None:
-                await interaction.channel.send("No result found")
+                await sent_message.edit(content="No result found")
                 return
             music = await self.dlmusic_one(url)
-            await interaction.channel.send(await self.addToQueue(music))
+            await sent_message.edit(content=await self.addToQueue(music))
         
         if self.nowplaying_music is None:
             await self.playerLoop(interaction)

@@ -14,61 +14,57 @@ class Music(commands.Cog):
         self.__bot = bot
         self.__players = {}
             
-    async def __userInVoiceChannel(self, interaction, msg = True) -> bool:
+    def __userInVoiceChannel(self, interaction, msg = True) -> bool:
         voice = interaction.user.voice
         if voice is None:
-            if msg is True:
-                if not interaction.response.is_done():
-                    await interaction.response.send_message("You are not in any voice channel")
-                else:
-                    await interaction.followup.send("You are not in any voice channel")
             return False
         return True
     
-    async def __botInVoiceChannel(self, interaction, msg = True) -> bool:
+    def __botInVoiceChannel(self, interaction, msg = True) -> bool:
         voice_client = interaction.guild.voice_client
         if voice_client is None:
-            if msg is True:
-                if not interaction.response.is_done():
-                    await interaction.response.send_message("I am not in any voice channel")
-                else:
-                    await interaction.followup.send("I am not in any voice channel")
             return False
         return True
     
     async def __do_join(self, interaction: discord.Interaction):
         """Internal join logic, separate from command to allow programmatic calls."""
-        if await self.__userInVoiceChannel(interaction) is False: return
+        if self.__userInVoiceChannel(interaction) is False: return
         await interaction.user.voice.channel.connect()
-        await interaction.response.send_message("Joined your voice channel")
 
         if self.__players.get(interaction.guild.id, None) is None:
             self.__players[interaction.guild.id] = GuildPlayer(interaction)
 
     async def __do_leave(self, interaction: discord.Interaction):
         """Internal leave logic, separate from command to allow programmatic calls."""
-        if await self.__botInVoiceChannel(interaction) is False: return
+        if self.__botInVoiceChannel(interaction) is False: return
         await interaction.guild.voice_client.disconnect()
-        await interaction.response.send_message("Left your voice channel")
 
     @app_commands.command(name = "join", description = "Call the bot to join your voice channel")
     async def join(self, interaction: discord.Interaction):
         await self.__do_join(interaction)
+        await interaction.response.send_message("Joined your voice channel")
     
     @app_commands.command(name = "leave", description = "Call the bot to leave your voice channel")
     async def leave(self, interaction: discord.Interaction):
         await self.__do_leave(interaction)
+        await interaction.response.send_message("Left your voice channel")
     
     @app_commands.command(name = "play", description = "Play a song with the given url or search term")
     @app_commands.describe(query = "The url or search term of the song")
     async def play(self, interaction: discord.Interaction, query: str):
-        if await self.__userInVoiceChannel(interaction) is False: 
+        message = ""
+        if self.__userInVoiceChannel(interaction) is False: 
+            await interaction.response.send_message("You need to be in a voice channel to use this command.")
             return
-        if await self.__botInVoiceChannel(interaction, False) is False:
+        if self.__botInVoiceChannel(interaction, False) is False:
             await self.__do_join(interaction)
+            message += "Joined your voice channel\n"
         
+        message += f"Searching for `{query}`..."
+        await interaction.response.send_message(message)
+        msg = await interaction.original_response()
         player: GuildPlayer = self.__players.get(interaction.guild.id, None)
-        await player.play(interaction, query)
+        await player.play(interaction, query, msg)
 
 
     @app_commands.command(name = "repeat", description = "Repeat the current song")
@@ -286,8 +282,10 @@ class Music(commands.Cog):
             return await interaction.response.send_message(f"cannot find the playlist `{name}`")
         #else
         urls = [x[1] for x in d[name]]
-        if await self.__userInVoiceChannel(interaction) is False: return
-        if await self.__botInVoiceChannel(interaction, False) is False:
+        if self.__userInVoiceChannel(interaction) is False: 
+            await interaction.response.send_message("You need to be in a voice channel to use this command.")
+            return
+        if self.__botInVoiceChannel(interaction, False) is False:
             await self.join(interaction)
         
         player: GuildPlayer = self.__players.get(interaction.guild.id, None)
