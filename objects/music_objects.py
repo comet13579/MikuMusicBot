@@ -3,6 +3,7 @@ import asyncio
 import os
 import discord
 import yt_dlp
+from collections import deque
 
 from tools.datetime_formatting import DatetimeFormatting as DF
 from tools.youtube_url_check import Check
@@ -15,6 +16,7 @@ class MusicDatabase():
     def __init__(self, url: str, info: dict):
         self.url = url
         self.id = info.get("id", None)
+        self.display_id = info.get("display_id", self.id)
         self.title = info.get("title", None)
         self.duration = info.get("duration", None)
         
@@ -25,10 +27,10 @@ class GuildPlayer():
         self.__guild = interaction.guild
         self.__channel = interaction.channel
         
-        self.queue = []
+        self.queue = deque()
         #[filename, MusicDatabase]
-        self._addingToQueue = False
-        self.history = []
+        self._queue_lock = asyncio.Lock()
+        self.history = deque()
         
         self.nowplaying_music = None #(str, MusicDatabase)
         self.nowplaying_start_time = None
@@ -38,21 +40,18 @@ class GuildPlayer():
         self.__timeout_start_time = None
     
     async def addToQueue(self, music: MusicDatabase, pos = -1):
-        video_id = music.id
-        video_title = music.title
-        
-        while True:
-            if self._addingToQueue is False:
-                self._addingToQueue = True
-                self.queue.insert(pos,(os.path.join("music", str(self.__guild.id), f"{video_id}_{video_title}.mp3"),music))
-                self._addingToQueue = False
-                break
-            await asyncio.sleep(0.25)
-        return f"`{video_title}` is added to queue"
+        async with self._queue_lock:
+            video_display_id = music.display_id
+            item = (os.path.join("music", str(self.__guild.id), f"{video_display_id}.mp3"), music)
+            if pos == 0:
+                self.queue.appendleft(item)  # O(1) — prepend
+            else:
+                self.queue.append(item)      # O(1) — append to end
+        return f"`{music.title}` is added to queue"
 
     async def dlmusic_one(self, url: str) -> MusicDatabase:
         video_opt = {
-            "outtmpl": os.path.join("music", str(self.__guild.id), "%(display_id)s_%(title)s.%(ext)s"),
+            "outtmpl": os.path.join("music", str(self.__guild.id), "%(display_id)s.%(ext)s"),
             "format": 'bestaudio',
             "extract_audio": True,
             "quiet": True,
@@ -68,8 +67,10 @@ class GuildPlayer():
         }
         def func():
             with yt_dlp.YoutubeDL(video_opt) as ydl:
-                info = ydl.extract_info(url, download = False)
-                if os.path.isfile(os.path.join("music", str(self.__guild.id), f"{info['id']}_{info['title']}.mp3")) is not True:
+                info = ydl.extract_info(url, download=False)
+                if info is None:
+                    return None
+                if not os.path.isfile(os.path.join("music", str(self.__guild.id), f"{info['display_id']}.mp3")):
                     print(f"downloading {info['title']}")
                     ydl.download(url)
                 music = MusicDatabase(url, info)
@@ -99,7 +100,14 @@ class GuildPlayer():
                 await asyncio.sleep(1)
                 continue
             
-            if len(self.queue) == 0:
+            async with self._queue_lock:
+                queue_empty = len(self.queue) == 0
+                if not queue_empty:
+                    filename, music = self.queue.popleft()  # O(1) vs O(n) for list.pop(0)
+                else:
+                    filename, music = None, None
+            
+            if queue_empty:
                 if self.__timeout_start_time is None:
                     self.__timeout_start_time = datetime.datetime.now()
                 else:
@@ -109,14 +117,11 @@ class GuildPlayer():
                         if voice_client is not None:
                             await voice_client.disconnect()
                             await interaction.channel.send("Timeout (idle over 5 mins)")
-                        del self
                         return
                 await asyncio.sleep(1)
                 continue
             
-            #else
-            filename, music = self.queue.pop(0)
-            print(filename, os.path.isfile(filename))
+            # queue is not empty, filename and music are already set
             if os.path.isfile(filename) is False:
                 await self.dlmusic_one(music.url)
             self.nowplaying_music = (filename, music)
@@ -134,7 +139,7 @@ class GuildPlayer():
                 if error is not None:
                     coro = interaction.channel.send(str(error))
                     asyncio.run_coroutine_threadsafe(coro, self.__bot.loop)
-                self.history.insert(0, (filename, music))
+                self.history.appendleft((filename, music))  # O(1) vs O(n) for list.insert(0, ...)
                 self.nowplaying_music = None
             
             self.nowplaying_start_time = datetime.datetime.now()
@@ -172,7 +177,6 @@ class GuildPlayer():
             url = videosSearch.result()['result'][0]['link']
         except IndexError:
             return None
-        print(url)
         return url
 
     async def nowplaying(self):
@@ -199,10 +203,11 @@ class GuildPlayer():
             voice_client.stop()
 
     async def previous(self, interaction):
-        if len(self.history) == 0:
-            return
-        self.queue.insert(0, self.nowplaying_music)
-        self.queue.insert(0, self.history.pop(0))
+        async with self._queue_lock:
+            if len(self.history) == 0:
+                return
+            self.queue.appendleft(self.nowplaying_music)          # O(1) vs O(n) for list.insert(0, ...)
+            self.queue.appendleft(self.history.popleft())          # O(1) vs O(n) for list.pop(0)
         voice_client = self.__bot.get_guild(self.__guild.id).voice_client
         if voice_client:
             voice_client.stop()

@@ -38,6 +38,7 @@ class Music(commands.Cog):
         """Internal leave logic, separate from command to allow programmatic calls."""
         if self.__botInVoiceChannel(interaction) is False: return
         await interaction.guild.voice_client.disconnect()
+        del self.__players[interaction.guild.id]
 
     @app_commands.command(name = "join", description = "Call the bot to join your voice channel")
     async def join(self, interaction: discord.Interaction):
@@ -165,7 +166,8 @@ class Music(commands.Cog):
             return await interaction.response.send_message("removed all")
         if num.isdigit():
             if int(num) in range(1, len(queue)+1):
-                music = queue.pop(int(num)-1)[1]
+                music = queue[int(num)-1][1]
+                del queue[int(num)-1]  # deque doesn't support pop(index), use del instead
                 return await interaction.response.send_message(f"removed `{music.title}`")
             else:
                 return await interaction.response.send_message("invalid no.")
@@ -223,78 +225,6 @@ class Music(commands.Cog):
                     return await interaction.response.send_message("volume has to be an integer between 0 and 100 inclusively")
             else:
                 return await interaction.response.send_message("volume has to be an integer between 0 and 100 inclusively")
-    
-    @app_commands.command(name = "save", description = "save your playlist")
-    @app_commands.describe(playlistname = "name of the playlist")
-    async def save(self, interaction: discord.Interaction, playlistname: str = None):
-        name = playlistname
-        player: GuildPlayer = self.__players.get(interaction.guild.id, None)
-        if player is None:
-            return await interaction.response.send_message("not playing anything")
-        if name is None:
-            return await interaction.response.send_message("please provide a name for the playlist")
-        #get urls from np + queue
-        np = player.nowplaying_music[1]
-        np = (np.title, np.url)
-        if len(player.queue) > 0:
-            queue = [(x[1].title, x[1].url) for x in player.queue]
-            queue.insert(0, np)
-            urls = queue
-        else:
-            urls = [np]
-        
-        #read file
-        try:
-            with open(f"playlist\\{interaction.user.id}.json", 'r') as f:
-                d = json.load(f)
-        except:
-            d = {}
-        
-        #return if exists
-        if name in d.keys():
-            return await interaction.response.send_message(f"playlist {name} already exists")
-        
-        #else create playlist
-        with open(f"playlist/{interaction.user.id}.json", 'w') as f:
-            d[name] = urls
-            json.dump(d, f, indent=4)
-            return await interaction.response.send_message(f"saved playlist as {name}")
-        
-    @app_commands.command(name = "playlist", description = "add the playlist to queue if specified, list all playlists if playlistname is None")
-    @app_commands.describe(playlistname = "name of the playlist")
-    async def playlist(self, interaction: discord.Interaction, playlistname: str = None):
-        """
-        add the playlist to queue if specified
-        list all playlists if playlistname is None
-        """
-        with open(f"playlist\\{interaction.user.id}.json", 'r') as f:
-            d = json.load(f)
-        
-        name = playlistname
-        if name is None:
-            output = []
-            for name, musics in d.items(): #music = (title, url)
-                titles = [f"    {i}: {music[0]}" for i, music in enumerate(musics, start=1)]
-                output.append(f"{name}:\n" + "\n".join(titles))
-            return await interaction.response.send_message("\n".join(output))
-        #else
-        if name not in d.keys():
-            return await interaction.response.send_message(f"cannot find the playlist `{name}`")
-        #else
-        urls = [x[1] for x in d[name]]
-        if self.__userInVoiceChannel(interaction) is False: 
-            await interaction.response.send_message("You need to be in a voice channel to use this command.")
-            return
-        if self.__botInVoiceChannel(interaction, False) is False:
-            await self.join(interaction)
-        
-        player: GuildPlayer = self.__players.get(interaction.guild.id, None)
-        await player.dlmusic_many(interaction, urls)
-        await interaction.response.send_message(f"added playlist `{name}` into queue")
-        
-        if player.nowplaying_music is None:
-            await player.playerLoop(interaction)
-        
-    
+
 async def setup(bot):
     await bot.add_cog(Music(bot))
