@@ -156,7 +156,7 @@ class GuildPlayer():
             print(urls)
             await sent_message.edit(content="Playlist function is not implemented yet")
         else: #not url
-            url = await self.__search(message)
+            url = self.__search(message)
             if url is None:
                 await sent_message.edit(content="No result found")
                 return
@@ -166,12 +166,13 @@ class GuildPlayer():
         if self.nowplaying_music is None:
             await self.playerLoop(interaction)
     
-    async def __search(self, message: str) -> str:
+    def __search(self, message: str) -> str:
         videosSearch = VideosSearch(message, limit = 1)
-        url = videosSearch.result()['result'][0]['link']
-        print(url)
-        if url is None:
+        try:
+            url = videosSearch.result()['result'][0]['link']
+        except IndexError:
             return None
+        print(url)
         return url
 
     async def nowplaying(self):

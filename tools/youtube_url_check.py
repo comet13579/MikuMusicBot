@@ -13,7 +13,7 @@ class Check():
 
     def is_watch_url(self, url:str) -> bool:
         if self.is_yt_url(url):
-            return url.__contains__("watch")
+            return url.__contains__("watch") or url.__contains__("youtu.be")
         return False
 
     def is_playlist_url(self, url:str) -> bool:
