@@ -7,3 +7,4 @@ youtube-search-python
 httpx<0.28
 pytube
 davey
+psycopg[binary]

@@ -13,7 +13,8 @@ class MyBot(commands.Bot):
             "basiccommand",
             "music",
             #"errorhandling",
-            "auto"
+            "auto",
+            "activitymonitor"
         ]   
         self.__listener_list = [
             "event"
@@ -38,6 +39,13 @@ class MyBot(commands.Bot):
         print(f"Loaded {len(slash)} slash commands")
 
 def main():
+    # On Windows, Psycopg 3 is incompatible with ProactorEventLoop.
+    # Force SelectorEventLoop before the bot creates its own loop.
+    import sys
+    if sys.platform == "win32":
+        import asyncio
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
     config = Config()
     prefix = config.prefix
     token = config.token
@@ -45,6 +53,7 @@ def main():
     intents = discord.Intents.default()
     intents.message_content = True
     intents.voice_states = True
+    intents.members = True
 
     bot = MyBot(
         command_prefix = prefix,

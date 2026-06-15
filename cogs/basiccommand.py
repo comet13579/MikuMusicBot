@@ -1,3 +1,5 @@
+from enum import member
+
 import discord
 from discord.ext import commands
 from discord import app_commands
@@ -53,7 +55,7 @@ class HelpView(discord.ui.View):
             inline=False
         )
         embed.set_footer(
-            text="Halley Comet",
+            text="MikuMusicBot",
             icon_url=interaction.user.avatar.url if interaction.user.avatar else None
         )
         return embed
@@ -86,7 +88,7 @@ class HelpView(discord.ui.View):
             inline=False
         )
         embed.set_footer(
-            text="Halley Comet",
+            text="MikuMusicBot",
             icon_url=interaction.user.avatar.url if interaction.user.avatar else None
         )
         return embed
