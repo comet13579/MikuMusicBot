@@ -34,7 +34,7 @@ class AdminHelpView(discord.ui.View):
         )
         embed.add_field(
             name="📊 Activity Monitor",
-            value="`/enableactivity` - Enable activity monitor on this server\n`/inactivity <days>` - Generate inactivity report for this server\n`/adminhelp` - Show this admin command list",
+            value="`/enableactivity` - Enable activity monitor on this server\n`/inactivity <days>` - Generate inactivity report for this server\n`/userlatest` - Check the last activity of a member\n`/helpadmin` - Show this admin command list",
             inline=False,
         )
         embed.set_footer(
@@ -52,7 +52,7 @@ class AdminHelpView(discord.ui.View):
         )
         embed.add_field(
             name="📊 活動監控",
-            value="`/enableactivity` - 在此伺服器啟用活動監控\n`/inactivity <天數>` - 生成此伺服器的不活躍報告\n`/adminhelp` - 顯示此管理員指令列表",
+            value="`/enableactivity` - 在此伺服器啟用活動監控\n`/inactivity <天數>` - 生成此伺服器的不活躍報告\n`/userlatest` - 查找用戶最後的活動\n`/helpadmin` - 顯示此管理員指令列表",
             inline=False,
         )
         embed.set_footer(
