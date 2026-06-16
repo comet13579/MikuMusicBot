@@ -141,6 +141,10 @@ class ActivityMonitor(commands.Cog):
     @app_commands.default_permissions(administrator=True)
     @app_commands.command(name="helpadmin", description="Show admin-only commands (Administrator only)")
     async def admin_help(self, interaction: discord.Interaction):
+        print(interaction)
+        print(interaction.user)
+        print(interaction.user.guild_permissions)
+        print(interaction.user.guild_permissions.administrator)
         if not interaction.user.guild_permissions.administrator:
             await interaction.response.send_message("You do not have administrator permissions.", ephemeral=True)
             return
@@ -151,9 +155,6 @@ class ActivityMonitor(commands.Cog):
     @app_commands.default_permissions(administrator=True)
     @app_commands.command(name="enableactivity", description="Enable activity monitor on this server (Administrator only)")
     async def enable_activity(self, interaction: discord.Interaction):
-        if not interaction.user.guild_permissions.administrator:
-            await interaction.response.send_message("You do not have administrator permissions.", ephemeral=True)
-            return
         if str(interaction.guild.id) in self.tables:
             await interaction.response.send_message("Activity monitor is already enabled for this server.", ephemeral=True)
             return
@@ -169,9 +170,6 @@ class ActivityMonitor(commands.Cog):
     @app_commands.command(name="inactivity", description="Generate inactivity report for this server (Administrator only)")
     @app_commands.describe(days="Number of days to consider for inactivity")
     async def inactivity_report(self, interaction: discord.Interaction, days: int):
-        if not interaction.user.guild_permissions.administrator:
-            await interaction.response.send_message("You do not have administrator permissions.", ephemeral=True)
-            return
         if str(interaction.guild.id) not in self.tables:
             await interaction.response.send_message("Activity monitor is not enabled for this server. Use /enableactivity to enable it.", ephemeral=True)
             return
@@ -195,9 +193,6 @@ class ActivityMonitor(commands.Cog):
     @app_commands.command(name="userlatest", description="Get the latest activity of a user (Administrator only)")
     @app_commands.describe(user="The user to check")
     async def user_latest(self, interaction: discord.Interaction, user: discord.Member):
-        if not interaction.user.guild_permissions.administrator:
-            await interaction.response.send_message("You do not have administrator permissions.", ephemeral=True)
-            return
         if str(interaction.guild.id) not in self.tables:
             await interaction.response.send_message("Activity monitor is not enabled for this server. Use /enableactivity to enable it.", ephemeral=True)
             return

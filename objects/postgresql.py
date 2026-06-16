@@ -2,7 +2,7 @@ import asyncio
 from psycopg import AsyncConnection, sql, OperationalError, errors
 
 class PostgreSQLLogin():
-    host = "192.168.1.123"
+    host = "localhost"
     port = 5432
     user = "dcbot"
     password = "mikumusicbot"
