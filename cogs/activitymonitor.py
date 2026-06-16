@@ -129,25 +129,9 @@ class ActivityMonitor(commands.Cog):
             return
         await self.db.remove_user_activity(str(member.guild.id), member.id)
 
-
-    @app_commands.default_permissions(administrator=True)
-    @app_commands.command(name="test", description="Test command (administrator only)")
-    async def test(self, interaction: discord.Interaction):
-        if not interaction.user.guild_permissions.administrator:
-            await interaction.response.send_message("You do not have administrator permissions.", ephemeral=True)
-            return
-        await interaction.response.send_message("✅ Test command executed successfully!")
-
     @app_commands.default_permissions(administrator=True)
     @app_commands.command(name="helpadmin", description="Show admin-only commands (Administrator only)")
     async def admin_help(self, interaction: discord.Interaction):
-        print(interaction)
-        print(interaction.user)
-        print(interaction.user.guild_permissions)
-        print(interaction.user.guild_permissions.administrator)
-        if not interaction.user.guild_permissions.administrator:
-            await interaction.response.send_message("You do not have administrator permissions.", ephemeral=True)
-            return
         view = AdminHelpView(interaction, chinese=False)
         embed = view._english_embed(interaction)
         await interaction.response.send_message(embed=embed, view=view)
