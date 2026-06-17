@@ -80,9 +80,6 @@ class ActivityMonitor(commands.Cog):
     async def cog_unload(self):
         await self.db.close()
 
-    async def getUserName(self,id):
-
-
     @commands.Cog.listener()
     async def on_thread_create(thread):
         if thread.joinable:
