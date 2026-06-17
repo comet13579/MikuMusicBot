@@ -80,6 +80,9 @@ class ActivityMonitor(commands.Cog):
     async def cog_unload(self):
         await self.db.close()
 
+    async def getUserName(self,id):
+
+
     @commands.Cog.listener()
     async def on_thread_create(thread):
         if thread.joinable:
@@ -88,6 +91,7 @@ class ActivityMonitor(commands.Cog):
     @commands.Cog.listener()
     async def on_message(self, message):
         """Print message content, username, and whether the user is a server owner."""
+        print(str(message.guild.id), self.tables)
         if message.author.bot or str(message.guild.id) not in self.tables:
             return
         await self.db.update_user_activity(
@@ -145,7 +149,11 @@ class ActivityMonitor(commands.Cog):
         await self.db.insert_timeline_entry(interaction.guild.id)
         await self.db.create_user_activity_table(str(interaction.guild.id))
         self.tables.add(str(interaction.guild.id))
+        print(self.tables)
+        print(interaction.guild.name)
+        print(interaction.guild.members)
         for member in interaction.guild.members:
+            print(member)
             if not member.bot:
                 await self.db.insert_default_user_activity(str(interaction.guild.id), member.id)
         await interaction.response.send_message("✅ Activity monitor enabled for this server!")
@@ -166,8 +174,11 @@ class ActivityMonitor(commands.Cog):
         report_lines = [f"**Inactivity Report for {interaction.guild.name} (Last {days} Days)**\n",f"Note: This function is activated since {days_since_activation} days ago, so anything before that is not included.\n"]
         for entry in report:
             user_id, last_active_at = entry
-            user = interaction.guild.get_member(user_id)
-            username = user.name if user else f"User ID {user_id}"
+            username = self.__bot.get_user(id) 
+            if not username:
+                # Fallback to API if cache fails
+                username = await self.__bot.fetch_user(id)
+            username = username if username else f"User ID {user_id}"
             last_active_str = last_active_at.strftime("%Y-%m-%d %H:%M:%S") if last_active_at else "Never"
             report_lines.append(f"- **{username}**: Last Active: {last_active_str}")
         report_content = "\n".join(report_lines)
