@@ -79,6 +79,12 @@ class ActivityMonitor(commands.Cog):
 
     async def cog_unload(self):
         await self.db.close()
+    
+    def check_guild(self, interaction: discord.Interaction):
+        if interaction.guild in self.__bot.guilds:
+            return True
+        return False
+
 
     @commands.Cog.listener()
     async def on_thread_create(thread):
@@ -88,7 +94,6 @@ class ActivityMonitor(commands.Cog):
     @commands.Cog.listener()
     async def on_message(self, message):
         """Print message content, username, and whether the user is a server owner."""
-        print(str(message.guild.id), self.tables)
         if message.author.bot or str(message.guild.id) not in self.tables:
             return
         await self.db.update_user_activity(
@@ -140,15 +145,15 @@ class ActivityMonitor(commands.Cog):
     @app_commands.default_permissions(administrator=True)
     @app_commands.command(name="enableactivity", description="Enable activity monitor on this server (Administrator only)")
     async def enable_activity(self, interaction: discord.Interaction):
+        if not self.check_guild(interaction):
+            await interaction.response.send_message("Add the bot to your server beforing using this command.", ephemeral=True)
+            return 
         if str(interaction.guild.id) in self.tables:
             await interaction.response.send_message("Activity monitor is already enabled for this server.", ephemeral=True)
             return
         await self.db.insert_timeline_entry(interaction.guild.id)
         await self.db.create_user_activity_table(str(interaction.guild.id))
         self.tables.add(str(interaction.guild.id))
-        print(self.tables)
-        print(interaction.guild.name)
-        print(interaction.guild.members)
         for member in interaction.guild.members:
             print(member)
             if not member.bot:
@@ -159,6 +164,9 @@ class ActivityMonitor(commands.Cog):
     @app_commands.command(name="inactivity", description="Generate inactivity report for this server (Administrator only)")
     @app_commands.describe(days="Number of days to consider for inactivity")
     async def inactivity_report(self, interaction: discord.Interaction, days: int):
+        if not self.check_guild(interaction):
+            await interaction.response.send_message("Add the bot to your server beforing using this command.", ephemeral=True)
+            return   
         if str(interaction.guild.id) not in self.tables:
             await interaction.response.send_message("Activity monitor is not enabled for this server. Use /enableactivity to enable it.", ephemeral=True)
             return
@@ -171,10 +179,8 @@ class ActivityMonitor(commands.Cog):
         report_lines = [f"**Inactivity Report for {interaction.guild.name} (Last {days} Days)**\n",f"Note: This function is activated since {days_since_activation} days ago, so anything before that is not included.\n"]
         for entry in report:
             user_id, last_active_at = entry
-            username = self.__bot.get_user(id) 
-            if not username:
-                # Fallback to API if cache fails
-                username = await self.__bot.fetch_user(id)
+            user = interaction.guild.get_member(user_id)
+            username = user.name if user else f"User ID {user_id}"
             username = username if username else f"User ID {user_id}"
             last_active_str = last_active_at.strftime("%Y-%m-%d %H:%M:%S") if last_active_at else "Never"
             report_lines.append(f"- **{username}**: Last Active: {last_active_str}")
@@ -185,6 +191,9 @@ class ActivityMonitor(commands.Cog):
     @app_commands.command(name="userlatest", description="Get the latest activity of a user (Administrator only)")
     @app_commands.describe(user="The user to check")
     async def user_latest(self, interaction: discord.Interaction, user: discord.Member):
+        if not self.check_guild(interaction):
+            await interaction.response.send_message("Add the bot to your server beforing using this command.", ephemeral=True)
+            return 
         if str(interaction.guild.id) not in self.tables:
             await interaction.response.send_message("Activity monitor is not enabled for this server. Use /enableactivity to enable it.", ephemeral=True)
             return
