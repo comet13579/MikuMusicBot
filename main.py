@@ -15,9 +15,6 @@ class MyBot(commands.Bot):
             #"errorhandling",
             "auto",
             "activitymonitor"
-        ]   
-        self.__listener_list = [
-            "event"
         ]
     
     async def setup_hook(self):
@@ -26,10 +23,6 @@ class MyBot(commands.Bot):
         for i, cog in enumerate(self.__cog_list, start = 1):
             await self.load_extension(f"cogs.{cog}")
             print(f"({i}/{length}) loaded {cog}")
-        print("listeners:")
-        for i, listener in enumerate(self.__listener_list, start = 1):
-            await self.load_extension(f"listeners.{listener}")
-            print(f"({i}/{length}) loaded {listener}")
 
         await Auto(self).removeInactiveAudio()
     
